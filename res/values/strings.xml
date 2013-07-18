@@ -4,5 +4,8 @@
     <string name="app_name">MotionDetector</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
+    <string name="statistic">Statistic</string>
+    <string name="movingtimeTitle">Moving time of a day:</string>
+    <string name="percentageTitle">Percentage of moving time of a day:</string>
 
 </resources>

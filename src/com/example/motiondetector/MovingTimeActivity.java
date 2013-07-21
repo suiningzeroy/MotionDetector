@@ -11,7 +11,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.util.Log;
-import android.view.Menu;
 import android.widget.TextView;
 
 public class MovingTimeActivity extends Activity {
@@ -19,9 +18,9 @@ public class MovingTimeActivity extends Activity {
 	private static final String LOGGING_TAG = "MovingTime";
 	
 	private boolean bound = false;
-	private float movingTime;
-	private float percentageOfMovingTime;
-	private String selectedDate;
+	private int movingTime;
+	private double percentageOfMovingTime;
+	private String selectedDate = "20130722";
 	private IMotionService motionService;
 	private TextView percentageView;
 	private TextView movingTimeView;
@@ -32,8 +31,8 @@ public class MovingTimeActivity extends Activity {
 			motionService = IMotionService.Stub.asInterface(service);
 			Log.d(LOGGING_TAG,"Connected to service");
 			try {
-				movingTime = (float) motionService.getMovingTimeOfADay(selectedDate);
-				percentageOfMovingTime = (float) motionService.getPercentageOfMovingTimeOfADay(selectedDate);
+				movingTime = (int) motionService.getMovingTimeOfADay(selectedDate);
+				percentageOfMovingTime = (double) motionService.getPercentageOfMovingTimeOfADay(selectedDate);
 				
 			} catch (RemoteException e) {
 				Log.e(LOGGING_TAG, "Exception retrieving moving time from service",e);
@@ -89,8 +88,8 @@ public class MovingTimeActivity extends Activity {
 	}
 
 	private void refreshUI(){
-		movingTimeView.setText(Float.toString(movingTime) + "second");
-		percentageView.setText(Float.toString(percentageOfMovingTime) + "%.");
+		movingTimeView.setText(Integer.toString(movingTime) + "minutes");
+		percentageView.setText(Double.toString(percentageOfMovingTime) + "%.");
 	}
 
 }

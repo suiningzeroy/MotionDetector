@@ -84,7 +84,7 @@ public class MovingTimeActivity extends Activity {
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
-		// disconnect from the stock service
+		// disconnect from the service
 		unbindService(connection);
 	}
 

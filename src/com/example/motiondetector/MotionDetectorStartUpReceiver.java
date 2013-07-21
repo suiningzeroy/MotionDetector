@@ -8,7 +8,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 
-public class MotionDetectorStartUpReceiver extends BroadcastReceiver {
+public class MotionDetectorStartupReceiver extends BroadcastReceiver {
 
 	private static final int FIVE_MINUTES = 5*60*1000;
 	@Override

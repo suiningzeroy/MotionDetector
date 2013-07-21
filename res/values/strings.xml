@@ -7,5 +7,6 @@
     <string name="statistic">Statistic</string>
     <string name="movingtimeTitle">Moving time of a day:</string>
     <string name="percentageTitle">Percentage of moving time of a day:</string>
+    <string name="service_name">MotionDetectorService</string>
 
 </resources>

@@ -165,10 +165,16 @@ public class MotionDetectorService extends Service {
 	}
 	
 	private double getMovingPercentage(String measureDate){
+		
+		double percentage;
 		int moveCounts = QueryForCounts("date",measureDate, "isMove", YES);
 		int stillCounts = QueryForCounts("date",measureDate, "isMove", NO);
 		
-		double percentage = moveCounts / (moveCounts + stillCounts);
+		if ((moveCounts + stillCounts) != 0)
+			percentage = moveCounts / (moveCounts + stillCounts);
+		else{
+			percentage = 0;
+		}
 		
 		return percentage;
 	}

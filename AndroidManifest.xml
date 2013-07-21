@@ -7,6 +7,7 @@
     <uses-sdk
         android:minSdkVersion="8"
         android:targetSdkVersion="15" />
+    <permission android:name="android.permission.WAKE_LOCK"></permission>
 
     <application
         android:allowBackup="true"
@@ -22,6 +23,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+         <service android:process=":motiondetector_background" 
+	    	android:name=".MotionDetectorService"
+	    	android:label="@string/service_name"/>
+         <receiver android:name=".MotionDetectorStartupReceiver" 
+			android:process=":motiondetector_background">
+	        	<intent-filter>
+	        		<action android:name="android.intent.action.BOOT_COMPLETED"/>
+	        	</intent-filter>
+		</receiver>
+		<receiver android:name=".AlarmReceiver" 
+			android:process=":motiondetector_background" />
     </application>
 
 </manifest>

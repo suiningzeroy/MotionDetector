@@ -8,5 +8,10 @@
     <string name="movingtimeTitle">Moving time of a day:</string>
     <string name="percentageTitle">Percentage of moving time of a day:</string>
     <string name="service_name">MotionDetectorService</string>
+    <string name="countsTitle">how many measurements in my device?</string>
+    <string name="StartService">StartService</string>
+    <string name="Query">Query</string>
+    <string name="InputDate">Input Date</string>
+    <string name="ChangeDate">Change Query Date</string>
 
 </resources>

@@ -16,7 +16,7 @@ public class Measurement {
 	@DatabaseField(canBeNull = false)
 	private double value;
 	@DatabaseField(canBeNull = false)
-	private String isMove;
+	private boolean isMove;
 	
 	public Measurement() {}
 	
@@ -43,10 +43,10 @@ public class Measurement {
 		this.value = measureValue;
 	}
 	
-	public String getIsMove(){
+	public boolean getIsMove(){
 		return this.isMove;
 	}
-	public void setIsMove(String isMove){
+	public void setIsMove(boolean isMove){
 		this.isMove = isMove;
 	}
 	

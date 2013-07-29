@@ -10,26 +10,56 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MovingTimeActivity" >
 
-    <TextView
-        android:id="@+id/movingTimeTitle"
+    <EditText
+        android:id="@+id/inputDate"
+        android:layout_width="123dp"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:hint="@string/InputDate"
+        android:inputType="date|text" >
+
+        <requestFocus />
+    </EditText>
+
+    <Button
+        android:id="@+id/changeDate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/movingtimeTitle" />
+        android:text="@string/ChangeDate" />
+
+    <Button
+        android:id="@+id/startQuery"
+        style="@style/AppTheme"
+        android:layout_width="125dp"
+        android:layout_height="wrap_content"
+        android:text="@string/Query" />
 
     <TextView
         android:id="@+id/movingTime"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <TextView
-        android:id="@+id/percentageTitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/percentageTitle" />
+        android:layout_height="wrap_content" />
 
     <TextView
         android:id="@+id/percentage"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:id="@+id/allCounts"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+    <DigitalClock 
+        android:text="@+id/digitalClock"
+        android:textSize="20sp" 
+        android:gravity="center"
+        android:id="@+id/DigitalClock01" 
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    <AnalogClock 
+        android:id="@+id/analogClock"
+        android:gravity="center" 
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" />
+    
 
 </LinearLayout>

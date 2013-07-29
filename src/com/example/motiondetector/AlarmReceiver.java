@@ -4,9 +4,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PowerManager;
+import android.util.Log;
 
 public class AlarmReceiver extends BroadcastReceiver {
 
+	private static final String LOGGING_TAG = "AlarmReceiver";
 	private static PowerManager.WakeLock wakeLock = null;
 	private static final String LOCK_TAG = "com.example.motiondetector";
 	
@@ -39,11 +41,11 @@ public class AlarmReceiver extends BroadcastReceiver {
 	@Override
 	public void onReceive(Context context, Intent intent) {
 		// TODO Auto-generated method stub
+		Log.d(LOGGING_TAG,"onReceive");
 		acquireLock(context);
 		Intent motionDetectorService = 
 			new Intent(context, MotionDetectorService.class);
 		context.startService(motionDetectorService);
-
 	}
 
 }

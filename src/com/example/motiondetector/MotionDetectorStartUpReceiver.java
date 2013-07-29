@@ -7,13 +7,16 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 public class MotionDetectorStartupReceiver extends BroadcastReceiver {
 
-	private static final int FIVE_MINUTES = 5*60*1000;
+	private static final int THIRTY_SECONDS = 30*1000;
+	private static final String LOGGING_TAG = "MotionDetectorStartupReceiver";
 	@Override
 	public void onReceive(Context context, Intent intent) {
 		// TODO Auto-generated method stub
+		Log.d(LOGGING_TAG,"onReceive");
 		AlarmManager mgr = 
 				(AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
 			Intent i = new Intent(context, AlarmReceiver.class);
@@ -22,8 +25,8 @@ public class MotionDetectorStartupReceiver extends BroadcastReceiver {
 			Calendar now = Calendar.getInstance();
 			now.add(Calendar.MINUTE, 2);
 			mgr.setRepeating(AlarmManager.RTC_WAKEUP, 
-					now.getTimeInMillis(), FIVE_MINUTES, sender);
-
+					now.getTimeInMillis(), THIRTY_SECONDS, sender);
+			Log.d(LOGGING_TAG,"setAlarm");
 	}
 
 }

@@ -71,19 +71,19 @@ public class MotionDetectorOrmLiteHelper extends OrmLiteSqliteOpenHelper {
 	}
 	
 	public RuntimeExceptionDao<Measurement, Integer> getSimpleDataDao() {
-        if (measureRuntimeDao == null) {
-        	measureRuntimeDao = getRuntimeExceptionDao(Measurement.class);
-        }
-        return measureRuntimeDao;
-    }
+		if (measureRuntimeDao == null) {
+			measureRuntimeDao = getRuntimeExceptionDao(Measurement.class);
+		}
+		return measureRuntimeDao;
+	}
 
-    /**
-     * Close the database connections and clear any cached DAOs.
-     */
-    @Override
-    public void close() {
-        super.close();
-        measureRuntimeDao = null;
-    }
+	/**
+	* Close the database connections and clear any cached DAOs.
+	*/
+	@Override
+	public void close() {
+		super.close();
+		measureRuntimeDao = null;
+	}
 
 }

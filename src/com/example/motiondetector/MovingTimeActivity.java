@@ -1,17 +1,11 @@
 package com.example.motiondetector;
 
-import java.text.SimpleDateFormat;
+import java.text.DecimalFormat;
 import java.util.Calendar;
-import java.util.Locale;
+import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.example.motiondetector.service.IMotionService;
-
-import android.os.Bundle;
-import android.os.IBinder;
-import android.os.RemoteException;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
@@ -20,6 +14,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
+import android.os.IBinder;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -27,25 +24,26 @@ import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
+
+import com.example.motiondetector.service.IMotionService;
 
 public class MovingTimeActivity extends Activity {
 	
 	private static final String LOGGING_TAG = "MovingTime";
-	private final SimpleDateFormat dateFormat =new SimpleDateFormat("yyyyMMdd",Locale.CHINA);  
-	private final SimpleDateFormat mDateFormat =new SimpleDateFormat("yyyy-MM-dd",Locale.CHINA);
 	private boolean bound = false;
-	private float movingTime;
-	private int allCounts;
-	private double percentageOfMovingTime;
+	private float movingTimeInMinutes;
+	private int databaseEntryCounts;
+	private double movingPercentage;
 	private static String selectedDate ;
 	private IMotionService motionService;
 	private TextView percentageView;
 	private TextView movingTimeView;
 	private TextView allCountsView;
 	private EditText inputDate;
-	private Button startQuery;
+	private Button queryButton;
 	private Button changeQueryDate;
+	private static final DecimalFormat df = new DecimalFormat("#.##");
+	private static final String DATE_PICKER_FRAGMENT_ID = "datePicker"; 
 
 	private ServiceConnection connection = new ServiceConnection(){
 
@@ -53,15 +51,14 @@ public class MovingTimeActivity extends Activity {
 			motionService = IMotionService.Stub.asInterface(service);
 			Log.d(LOGGING_TAG,"Connected to service");
 			try {
-				movingTime = (float) motionService.getMovingTimeOfADay(selectedDate);
-				percentageOfMovingTime = (double) motionService.getPercentageOfMovingTimeOfADay(selectedDate);
-				allCounts = (int) motionService.getAllCounts();
+				movingTimeInMinutes = (float) motionService.getMovingTimeOfADay(selectedDate);
+				movingPercentage = (double) motionService.getPercentageOfMovingTimeOfADay(selectedDate) * 100;
+				databaseEntryCounts = (int) motionService.getAllCounts();
 				
 			} catch (RemoteException e) {
 				Log.e(LOGGING_TAG, "Exception retrieving moving time from service",e);
 			}
 			
-			//Log.d(LOGGING_TAG,"movingTime | percentageOfMovingTime = " + movingTime + " | " + (float)percentageOfMovingTime);
 			refreshUI();
 		}
 		
@@ -71,26 +68,27 @@ public class MovingTimeActivity extends Activity {
 		
 	};
 
-	@Override
-	public void onStart(){
-		super.onStart();
-		/*if (!bound){
-			bound = bindService(
-					new Intent(MovingTimeActivity.this, MotionDetectorService.class), 
-					connection, Context.BIND_AUTO_CREATE);
-			Log.d(LOGGING_TAG, "Bound to service in onStart: " + bound);
-		
-		}
-		if (!bound){
-			Log.e(LOGGING_TAG, "Failed to bind to service");
-			throw new RuntimeException("Failed to find to service");
-		}*/
+	private void refreshUI(){
+		runOnUiThread(new Runnable() {
+			public void run() {
+				movingTimeView.setText("You had been moving for " + df.format(movingTimeInMinutes) + " minutes"
+										+ " on " + selectedDate + ".");
+				if(movingPercentage >= 0)
+					percentageView.setText("The percentage of moving time on " + selectedDate + " is : " + df.format(movingPercentage) + "%.");
+				else
+					percentageView.setText("No record on " + selectedDate + " thus no moving time percentage.");
+
+				allCountsView.setText("You have " + Integer.toString(databaseEntryCounts) + " measurements in total since installation."); 
+				inputDate.setText(selectedDate);
+			}
+		});
+		unbindServiceIfBound();
 	}
-	
+
 	@Override
 	public void onPause(){
 		super.onPause();
-		unbindServiceIfBinded();
+		unbindServiceIfBound();
 	}
 	
 	@Override
@@ -101,16 +99,16 @@ public class MovingTimeActivity extends Activity {
 		percentageView = (TextView) findViewById(R.id.percentage);
 		allCountsView = (TextView) findViewById(R.id.allCounts);
 		inputDate = (EditText) findViewById(R.id.inputDate);
-		selectedDate = dateFormat.format(new java.util.Date()); 
-		startQuery = (Button) findViewById(R.id.startQuery);
-		startQuery.setOnClickListener(new OnClickListener(){
+		
+		selectedDate = MotionDetectorService.dateFormat.format(new java.util.Date()); 
+		
+		queryButton = (Button) findViewById(R.id.startQuery);
+		queryButton.setOnClickListener(new OnClickListener(){
 
 			@Override
 			public void onClick(View v) {
-				// TODO Auto-generated method stub
 					if (!bound){
-						bound = bindService(
-								new Intent(MovingTimeActivity.this, MotionDetectorService.class), 
+						bound = bindService(new Intent(MovingTimeActivity.this, MotionDetectorService.class), 
 								connection, Context.BIND_AUTO_CREATE);
 						Log.d(LOGGING_TAG, "Bound to service in onStart: " + bound);
 					}
@@ -128,8 +126,8 @@ public class MovingTimeActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				showDatePickerDialog(v);
-				}
-			});
+			}
+		});
 		
 		Timer updateTimer = new Timer("motionDetectorUpdate");
 		updateTimer.scheduleAtFixedRate(new TimerTask() {
@@ -141,68 +139,52 @@ public class MovingTimeActivity extends Activity {
 
 	@Override
 	protected void onDestroy() {
+		unbindServiceIfBound();
 		super.onDestroy();
-		// disconnect from the service
-		unbindServiceIfBinded();
 	}
 
-	private void refreshUI(){
-		runOnUiThread(new Runnable() {
-			public void run() {
-				movingTimeView.setText("You had been moving for " + Float.toString(movingTime) + " minutes"
-										+ " on " + selectedDate + ".");
-				percentageView.setText("The percentage of moving time on " + selectedDate + " : " + Double.toString(percentageOfMovingTime*100) + "%.");
-				allCountsView.setText("You total have " + Integer.toString(allCounts) + " measurements."); 
-				inputDate.setText(selectedDate);
-			}
-		});
 		
-		unbindServiceIfBinded();
-	}
-		
-	private void unbindServiceIfBinded(){
+	private void unbindServiceIfBound(){
 		if (bound){
 			bound = false;
 			unbindService(connection);
-			Log.d(LOGGING_TAG,"unbindService in onPause");
+			Log.d(LOGGING_TAG,"unbindService");
 		}
 	}
 	
 	public void showDatePickerDialog(View v) {
 		DialogFragment newFragment = new DatePickerFragment();
-		newFragment.show(getFragmentManager(), "datePicker");
+		newFragment.show(getFragmentManager(), DATE_PICKER_FRAGMENT_ID);
 	}
 	
-	public static class DatePickerFragment  extends DialogFragment 
+	private static class DatePickerFragment  extends DialogFragment 
 				implements DatePickerDialog.OnDateSetListener  {
 
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
-		// Use the current time as the default values for the picker
+		    // Use the current time as the default values for the picker
 			final Calendar c = Calendar.getInstance();
 			int year = c.get(Calendar.YEAR);
 			int month = c.get(Calendar.MONTH);
 			int day = c.get(Calendar.DAY_OF_MONTH);
 			 
-			 return new DatePickerDialog(getActivity(), this, year, month, day);
+			return new DatePickerDialog(getActivity(), this, year, month, day);
 		}
 
 		@Override
 		public void onDateSet(DatePicker view, int year, int monthOfYear,
 				int dayOfMonth) {
-			// TODO Auto-generated method stub
 			selectedDate = getSelectedDateString(year,monthOfYear,dayOfMonth);
-						
 		}
-		private String getSelectedDateString(int year, int monthOfYear,
-			int dayOfMonth){
-			String dateString;
-			if (Integer.toString(monthOfYear + 1).length() == 1)
-				dateString = Integer.toString(year) + "0" +Integer.toString(monthOfYear+1) + Integer.toString(dayOfMonth);
-				else
-					dateString = Integer.toString(year) + Integer.toString(monthOfYear+1) + Integer.toString(dayOfMonth);
+		
+		private String getSelectedDateString(int year, int monthOfYear, int dayOfMonth){
+			Calendar cl = Calendar.getInstance();
+			cl.set(Calendar.YEAR, year);
+			cl.set(Calendar.MONTH, monthOfYear);
+			cl.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+			cl.set(Calendar.HOUR_OF_DAY, 0);
 				
-				return dateString; 
+			return MotionDetectorService.dateFormat.format(new Date(cl.getTimeInMillis())); 
 		}
 		
 	}

@@ -2,6 +2,7 @@ package com.example.motiondetector;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Locale;
 
 import android.app.Service;
@@ -13,102 +14,76 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.util.Log;
 
 import com.example.motiondetector.service.IMotionService;
 import com.j256.ormlite.android.apptools.OpenHelperManager;
-import com.j256.ormlite.stmt.DeleteBuilder;
 
 public class MotionDetectorService extends Service {
+	
+	private static final int NUM_READINGS_TO_SKIP = 5;
 	private static final String LOGGING_TAG = "MotionDetectorService";
 	private static final boolean YES = true;
 	private static final boolean NO = false;
-	private static final float HALF_MINUTES = 0.5f;
-	private static final int MEASURE_DURATION = 1000*5;
-	private static final float ACCELERATION_OF_MOVE = 0.5f;
+	private static final float MILLIS_IN_ONE_MINUTE = 60 * 1000f;
+	private static final int MEASURE_DURATION_IN_MILLIS = 5 * 1000;
+	private static final float ACCELERATION_DEVIATION_WHEN_MOVING = 1.5f;
 	private MotionDetectorOrmLiteHelper ormLiteHelper = null;
 	
 	private SensorManager sensorManager;
-	private final double calibration = SensorManager.STANDARD_GRAVITY;
-	private double currentAcceleration;
-	private double maxAcceleration;
-	private final SimpleDateFormat dateFormat =new SimpleDateFormat("yyyyMMdd",Locale.CHINA);  
-	private final SimpleDateFormat timeFormate =new SimpleDateFormat("hh:mm:ss",Locale.CHINA);  
-	private String measureTime;
+	private double maxDeviation = 0d;
+	public static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd",Locale.CHINA);  
+	private long measureTime;
 	private String measureDate;
+	private static PowerManager.WakeLock wakeLock = null;
+	private static final String LOCK_TAG = "com.example.motiondetector";
 	
-	private final SensorEventListener sensorEventListener = new SensorEventListener() {
-		
+	private static final String COLUMN_DATE = "date";
+	private static final String COLUMN_ISMOVING = "is_moving";
+
+	public static synchronized void acquireLock(Context ctx){
+		if (wakeLock == null){
+			PowerManager pMgr = (PowerManager) ctx.getSystemService(Context.POWER_SERVICE);
+			wakeLock = pMgr.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, LOCK_TAG);
+			wakeLock.setReferenceCounted(true);
+		}
+		wakeLock.acquire();
+	}
+	
+	public static synchronized void releaseLock(){
+		if (wakeLock != null){
+			wakeLock.release();
+		}
+	}
+
+	private final SensorEventListener accelListener = new SensorEventListener() {
+		private int sensorReadingCount = 0;
 		public void onAccuracyChanged(Sensor sensor, int accuracy) { }
 		
 		public void onSensorChanged(SensorEvent event) {
+			sensorReadingCount++;
+			if(sensorReadingCount < NUM_READINGS_TO_SKIP)
+				return;
 			double x = event.values[0];
 			double y = event.values[1];
 			double z = event.values[2];
-			double a = Math.round(Math.sqrt(Math.pow(x, 2) +
-						Math.pow(y, 2) +
-						Math.pow(z, 2)));
-			currentAcceleration = Math.abs((float)(a-calibration));
-			if (currentAcceleration > maxAcceleration)
-				maxAcceleration = currentAcceleration;
+			double absValue = Math.sqrt( x * x + y * y + z * z);
+			double currentDeviation = Math.abs(absValue - SensorManager.STANDARD_GRAVITY);
+			if (currentDeviation > maxDeviation)
+				maxDeviation = currentDeviation;
 		}
 	};
 	
 	@Override
-	public void onCreate() {
-		super.onCreate();		
-		//Log.i(LOGGING_TAG, "onCreate");
-	}
-	
-	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
-		//Log.i(LOGGING_TAG, "onStartCommand");
-		
-		measureAccelerometerReading(MEASURE_DURATION);
-		AlarmReceiver.releaseLock();
+		doAccelerometerMeasuring(MEASURE_DURATION_IN_MILLIS);
 		return Service.START_STICKY;
 	}
-		
-	@Override
-	public void onDestroy() {
-		super.onDestroy();
-		
-		//Log.i(LOGGING_TAG, "onDestroy");
-		
-		if (ormLiteHelper != null) {
-				OpenHelperManager.releaseHelper();
-				ormLiteHelper = null;
-		}
-	}
-
-	@Override
-	public IBinder onBind(Intent arg0) {
-		// TODO Auto-generated method stub
-		//Log.i(LOGGING_TAG, "onBind");
-		return new IMotionService.Stub() {
-			@Override
-			public double getPercentageOfMovingTimeOfADay(String date)
-					throws RemoteException {
-				// TODO Auto-generated method stub
-				return getMovingPercentage(date);
-			}
-
-			@Override
-			public float getMovingTimeOfADay(String date) throws RemoteException {
-				// TODO Auto-generated method stub
-				return getMovingTime(date);
-			}
-
-			@Override
-			public int getAllCounts() throws RemoteException {
-				// TODO Auto-generated method stub
-				return QueryForAllCounts();
-			}
-		};
-	}
 	
-	private void measureAccelerometerReading(int delayMillis){
+	private void doAccelerometerMeasuring(int delayMillis){
+		acquireLock(this);
 		Handler handler = new Handler();
 		sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
 		Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -116,36 +91,79 @@ public class MotionDetectorService extends Service {
 		Runnable autoStop = new Runnable(){
 			@Override
 			public void run() {
-				sensorManager.unregisterListener(sensorEventListener);
+				sensorManager.unregisterListener(accelListener);
 				writeDataToDB();
+				releaseLock();
 			}
 		};
-		sensorManager.registerListener(sensorEventListener,
-				accelerometer,
+
+		sensorManager.registerListener(accelListener, accelerometer,
 				SensorManager.SENSOR_DELAY_FASTEST);
-		
 		handler.postDelayed(autoStop, delayMillis);
-		
-	}
-	
-	private boolean isMoving(double acceleration){
-		return acceleration > ACCELERATION_OF_MOVE ? YES : NO;
+		Date now = new Date();
+		measureTime = now.getTime();
+		measureDate = dateFormat.format(now);
 	}
 	
 	private void writeDataToDB(){		
-		//Log.i("autostop", "writeDataToDB start");
-		getCurrentDate();
 		Measurement measure = new Measurement();
 		measure.setDate(measureDate);
 		measure.setMeasureTime(measureTime);
-		measure.setIsMove(isMoving(maxAcceleration/SensorManager.STANDARD_GRAVITY));
-		measure.setValue(maxAcceleration/SensorManager.STANDARD_GRAVITY);
-		Log.i("autostop", "measure =" + measure.getDate() +"|"+ measure.getIsMove() 
+		measure.setIsMoving(isMoving(maxDeviation));
+		measure.setValue(maxDeviation);
+		Log.i("Write to Database", "measurement =" + measure.getDate() +"|"+ measure.getIsMoving() 
 				+"|"+ measure.getMeasureTime()+"|"+ measure.getValue());
-		insert(measure);
-		maxAcceleration = 0;
+		insertMeasurementToDb(measure);
+	}
+
+		
+	@Override
+	public void onDestroy() {
+		//make sure the wakelock is released.
+		releaseLock();
+		if (ormLiteHelper != null) {
+			OpenHelperManager.releaseHelper();
+			ormLiteHelper = null;
+		}
+		super.onDestroy();
+	}
+
+	@Override
+	public IBinder onBind(Intent intentNotUsed) {
+		return new IMotionService.Stub() {
+			@Override
+			public double getPercentageOfMovingTimeOfADay(String date)
+					throws RemoteException {
+				return getMovingPercentage(date);
+			}
+
+			@Override
+			public float getMovingTimeOfADay(String date) throws RemoteException {
+				return getMovingTime(date);
+			}
+
+			@Override
+			public int getAllCounts() throws RemoteException {
+				return QueryForAllCounts();
+			}
+		};
 	}
 	
+	
+	private boolean isMoving(double accelDeviation){
+		return accelDeviation > ACCELERATION_DEVIATION_WHEN_MOVING ? YES : NO;
+	}
+	
+	
+	private void insertMeasurementToDb(Measurement measurement){
+		try {
+			getHelper().getDao().create(measurement);
+		}catch (SQLException e) {
+			Log.d(LOGGING_TAG, "writing measurement to database failed");
+			e.printStackTrace();
+		}
+	}
+
 	private MotionDetectorOrmLiteHelper getHelper() {
 		if (ormLiteHelper == null) {
 			ormLiteHelper =
@@ -153,33 +171,34 @@ public class MotionDetectorService extends Service {
 		}
 		return ormLiteHelper;
 	}
-	
-	private int delete(String colomnName1, String arg1){
-		try {
-			DeleteBuilder<Measurement, Integer> deleteBuilder = getHelper().getDao().deleteBuilder();
-			deleteBuilder.where().eq(colomnName1,arg1);
-			return deleteBuilder.delete();
-		}catch (SQLException e) {
-			Log.d(LOGGING_TAG, "delete failed");
-			e.printStackTrace();
-		}
 
-		return 0 ;	
-
+	private float getMovingTime(String measureDate){
+		int moveCounts = QueryForCounts(COLUMN_DATE, measureDate, COLUMN_ISMOVING, YES);
+		return moveCounts * (float) MotionDetectorStartUpReceiver.SAMPLING_INTERVAL_IN_MILLIS 
+				/ (float) MILLIS_IN_ONE_MINUTE ;
 	}
 	
-	private void insert(Measurement measurement){
-		try {
-			getHelper().getDao().create(measurement);
-		}catch (SQLException e) {
-			Log.d(LOGGING_TAG, "writing accelerometer reading to database failed");
-			e.printStackTrace();
-		}
-	}
-	
-	private int QueryForCounts(String colomnName1, String arg1,String colomnName2, boolean arg2) {
-		int counts = 0;
+	private double getMovingPercentage(String measureDate){
 		
+		double movingPercentage = 0;
+		int moveCounts = QueryForCounts(COLUMN_DATE, measureDate, COLUMN_ISMOVING, YES);
+		int stillCounts = QueryForCounts(COLUMN_DATE, measureDate, COLUMN_ISMOVING, NO);
+		boolean nonZeroMeasurement = ((moveCounts + stillCounts) > 0 );
+		
+		Log.d(LOGGING_TAG,"There exists measurement matching the query date:  " + Boolean.toString(nonZeroMeasurement));
+		
+		if (nonZeroMeasurement){
+			movingPercentage = (double)moveCounts / (double) (moveCounts + stillCounts) ;
+		} else{
+			movingPercentage = -1;
+		}
+		
+		Log.d(LOGGING_TAG,"percentage | percentage = " + movingPercentage );
+		return movingPercentage;
+	}
+	
+	private int QueryForCounts(String colomnName1, String arg1, String colomnName2, boolean arg2) {
+		int counts = 0;
 		try{
 			 counts = getHelper().getDao().queryBuilder().where().eq(colomnName1, arg1)
 						.and().eq(colomnName2,arg2)
@@ -193,48 +212,14 @@ public class MotionDetectorService extends Service {
 	}
 	
 	private int QueryForAllCounts(){
-		int count1 = 0;
+		int countAll = 0;
 		try{
-			count1 = getHelper().getDao().queryForAll().size();
+			countAll = getHelper().getDao().queryForAll().size();
 		}catch (SQLException e){
 			e.printStackTrace();
 		}
 		
-		return count1;
+		return countAll;
 	}
 	
-	private float getMovingTime(String measureDate){
-		int moveCounts = QueryForCounts("date",measureDate, "isMove", YES);
-		return moveCounts*HALF_MINUTES;
-	}
-	
-	private  double getMovingPercentage(String measureDate){
-		
-		double percentage = 0;
-		int moveCounts = QueryForCounts("date",measureDate, "isMove", YES);
-		int stillCounts = QueryForCounts("date",measureDate, "isMove", NO);
-		
-		Log.d(LOGGING_TAG,"Boolean  " + Boolean.toString((moveCounts + stillCounts) != 0));
-		
-		if ((moveCounts + stillCounts) != 0 ){
-			percentage = (double)moveCounts / (moveCounts + stillCounts) ;
-		
-			//Log.d(LOGGING_TAG,"percentage = " 
-			//	+ (double) moveCounts / (moveCounts + stillCounts)+ " | " + percentage);
-		}
-		else{
-			percentage = 0.01;
-		}
-		Log.d(LOGGING_TAG,"percentage | percentage = " 
-				+ percentage );
-		
-		return percentage;
-	}
-
-	private void getCurrentDate(){
-		measureDate = dateFormat.format(new java.util.Date()); 
-		//Log.i("autostop", "measureDate =" + measureDate);
-		measureTime = timeFormate.format(new java.util.Date());
-	}
-
 }

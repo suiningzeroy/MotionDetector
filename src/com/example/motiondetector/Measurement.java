@@ -12,11 +12,11 @@ public class Measurement {
 	@DatabaseField(canBeNull = false)
 	private String date;
 	@DatabaseField(canBeNull = false)
-	private String measureTime;
+	private long measureTime;
 	@DatabaseField(canBeNull = false)
 	private double value;
 	@DatabaseField(canBeNull = false)
-	private boolean isMove;
+	private boolean is_moving;
 	
 	public Measurement() {}
 	
@@ -28,11 +28,11 @@ public class Measurement {
 		this.date =measureDate;
 	}
 	
-	public String getMeasureTime(){
+	public long getMeasureTime(){
 		return this.measureTime;
 	}
 	
-	public void setMeasureTime(String measureTime){
+	public void setMeasureTime(long measureTime){
 		this.measureTime =measureTime;
 	}
 	public double getValue(){
@@ -43,11 +43,11 @@ public class Measurement {
 		this.value = measureValue;
 	}
 	
-	public boolean getIsMove(){
-		return this.isMove;
+	public boolean getIsMoving(){
+		return this.is_moving;
 	}
-	public void setIsMove(boolean isMove){
-		this.isMove = isMove;
+	public void setIsMoving(boolean isMove){
+		this.is_moving = isMove;
 	}
 	
 }

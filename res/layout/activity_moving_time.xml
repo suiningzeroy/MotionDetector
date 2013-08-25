@@ -49,16 +49,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
     <DigitalClock 
+        android:id="@+id/DigitalClock01" 
         android:text="@+id/digitalClock"
         android:textSize="20sp" 
         android:gravity="center"
-        android:id="@+id/DigitalClock01" 
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
     <AnalogClock 
         android:id="@+id/analogClock"
         android:gravity="center" 
-        android:layout_width="fill_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
     
 
